@@ -10,12 +10,11 @@ import UIKit
 class UserViewController : UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     var tableView = UITableView()
-    var users : [User] = []
     
-    private let networkManagerObj : NetworkManagerProtocol
+    let viewModelObj : UserViewModel?
     
-    init(networkManagerObj : NetworkManagerProtocol = NetworkManager.shared) {
-        self.networkManagerObj = networkManagerObj
+    init(viewModelObj : UserViewModel) {
+        self.viewModelObj = viewModelObj
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -46,34 +45,28 @@ class UserViewController : UIViewController, UITableViewDelegate, UITableViewDat
         ])
     }
     
-    @MainActor
     func fetchData() async{
-        do {
-            users = try await networkManagerObj.fetchUsers()
-//            print(users
-            self.tableView.reloadData()
-
-        }
-        catch {
-            print("error fetch data", error)
-        }
+        await viewModelObj?.getData()
+        self.tableView.reloadData()
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        users.count
+        viewModelObj?.getUsersCount() ?? 0
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as? UserTableViewCell else {
             return UITableViewCell()
         }
-        cell.configure(with: users[indexPath.row])
+        if let user = viewModelObj?.getUsers(at: indexPath.row) {
+            cell.configure(with: user)
+        }
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let user = users[indexPath.row]
+        guard let user = viewModelObj?.getUsers(at: indexPath.row) else { return }
         let detailVC = UserDetailViewController(user: user)
         navigationController?.pushViewController(detailVC, animated: true)
     }
